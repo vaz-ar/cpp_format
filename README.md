@@ -1,1 +1,1 @@
-# cpp_format
+# c++ formatting tool
