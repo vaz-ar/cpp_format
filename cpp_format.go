@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func indent_connects(lines []string) {
+func indentConnects(lines []string) {
 
 	re_start := regexp.MustCompile(`^(\s*connect\(\S+,)\s*(&\w+::\w+,)\s*$`)
 	re_end := regexp.MustCompile(`^(\s*\S+,)\s*(&\w+::\w+\);)\s*$`)
@@ -98,18 +98,14 @@ func format(lines []string) {
 	}
 }
 
-func get_file_list(target *string, ignore *string) []string {
+func getFileList(target *string, ignore *string) []string {
 	var ext string
 	var walkFunc filepath.WalkFunc
 	var files []string
 
 	if *ignore != "" {
 
-		content, err := ioutil.ReadFile(*ignore)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		ignore_list := strings.Split(string(content), "\n")
+		ignore_list := readFileToSlice(*ignore)
 
 		walkFunc = func(path string, f os.FileInfo, err error) error {
 			for _, line := range ignore_list {
@@ -142,6 +138,15 @@ func get_file_list(target *string, ignore *string) []string {
 		log.Fatalln(err)
 	}
 	return files
+}
+
+func readFileToSlice(filename string) []string {
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	// Split file content into a slice
+	return strings.Split(string(content), "\n")
 }
 
 func main() {
@@ -180,7 +185,7 @@ func main() {
 	}
 
 	if fi.Mode().IsDir() { // If the target is a folder
-		files = get_file_list(&target, ignore)
+		files = getFileList(&target, ignore)
 		if len(files) == 0 {
 			fmt.Println("\nThe target folder must contains c++ files")
 		}
@@ -192,16 +197,11 @@ func main() {
 	}
 
 	for _, file := range files {
-		// Open the file
-		content, err := ioutil.ReadFile(file)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		// Split file content into a slice
-		lines := strings.Split(string(content), "\n")
+
+		lines := readFileToSlice(file)
 
 		if *indent {
-			indent_connects(lines)
+			indentConnects(lines)
 		}
 		if *form {
 			format(lines)
