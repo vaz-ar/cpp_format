@@ -5,7 +5,7 @@ package main
 
 import (
 	"fmt"
-	// "strings"
+	"github.com/fatih/color"
 	"testing"
 )
 
@@ -17,9 +17,11 @@ func TestIndentConnects(t *testing.T) {
 
 	for i, line := range source {
 		if line != result[i] {
-			fmt.Println("|" + line + "|")
-			fmt.Println("|" + result[i] + "|")
+			color.Set(color.FgYellow)
+			fmt.Printf("\nTheses lines are different: \n%s\n%s\n\n", line, result[i])
+			color.Set(color.FgRed)
 			t.FailNow()
+			color.Unset()
 		}
 	}
 }
