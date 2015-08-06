@@ -15,11 +15,16 @@ import (
 	"strings"
 )
 
+var (
+	re_start         *regexp.Regexp = regexp.MustCompile(`^(\s*connect\(\S+,)\s*(&\w+::\w+,)\s*$`)
+	re_end           *regexp.Regexp = regexp.MustCompile(`^(\s*\S+,)\s*(&\w+::\w+\);)\s*$`)
+	re_comment_caps  *regexp.Regexp = regexp.MustCompile(`//\s{0,3}(this|if|for|while|delete|void|return|qDebug|m\S+?_\S+)?(\S)`)
+	re_dox_backslash *regexp.Regexp = regexp.MustCompile(`(\* )@(brief|param(?:\[(?:in|out)\])?|return)`)
+	re_dox_caps      *regexp.Regexp = regexp.MustCompile(`(\* \\(?:brief|return))\s+([a-zA-Z])([a-zA-Z]+(?:_|::)[a-zA-Z]+)?`)
+	re_dox_colon     *regexp.Regexp = regexp.MustCompile(`(\* \\param(?:\[(?:in|out)\])?\s\S+\s)(\S{2,})`)
+)
+
 func indentConnects(lines []string) {
-
-	re_start := regexp.MustCompile(`^(\s*connect\(\S+,)\s*(&\w+::\w+,)\s*$`)
-	re_end := regexp.MustCompile(`^(\s*\S+,)\s*(&\w+::\w+\);)\s*$`)
-
 	var (
 		ix_start, ix_end          []int
 		len_start, len_end, pad   int
@@ -28,7 +33,6 @@ func indentConnects(lines []string) {
 	)
 
 	for i, line := range lines {
-
 		if !found_connect {
 			if ix_start = re_start.FindStringSubmatchIndex(line); ix_start != nil {
 				found_connect = true
@@ -59,38 +63,27 @@ func indentConnects(lines []string) {
 }
 
 func format(lines []string) {
-
-	re_comment_caps := regexp.MustCompile(`//\s{0,3}(this|if|for|while|delete|void|return|qDebug|m\S+?_\S+)?(\S)`)
-	re_dox_backslash := regexp.MustCompile(`(\* )@(brief|param(?:\[(?:in|out)\])?|return)`)
-	re_dox_caps := regexp.MustCompile(`(\* \\(?:brief|return))\s+([a-zA-Z])([a-zA-Z]+(?:_|::)[a-zA-Z]+)?`)
-	re_dox_colon := regexp.MustCompile(`(\* \\param(?:\[(?:in|out)\])?\s\S+\s)(\S{2,})`)
-
 	var indexes []int
 	for i, line := range lines {
-
-		// First letter of comments in capital
+		// --- First letter of comments in capital
 		if indexes = re_comment_caps.FindStringSubmatchIndex(line); indexes != nil && indexes[2] == -1 {
 			// => the first capture group didn't return anything, which is what we want (nb: No negative lookahead for regexp in Go)
 			// Capitalisation of the first letter
 			line = fmt.Sprint(line[:indexes[4]], strings.ToUpper(line[indexes[4]:indexes[5]]), line[indexes[5]:])
 		}
-
-		// Replace "@" by "\" in doxygen comment blocks
+		// --- Replace "@" by "\" in doxygen comment blocks
 		if indexes = re_dox_backslash.FindStringSubmatchIndex(line); indexes != nil {
 			line = fmt.Sprint(line[:indexes[3]], "\\", line[indexes[4]:])
 		}
-
-		//  Capitalisation of first letter after brief/return in doxygen comment blocks
+		//  --- Capitalisation of first letter after brief/return in doxygen comment blocks
 		if indexes = re_dox_caps.FindStringSubmatchIndex(line); indexes != nil && indexes[6] == -1 {
 			// the third capture group didn't return anything, which is what we want (nb: No negative lookahead for regexp in Go)
 			line = fmt.Sprint(line[:indexes[3]], " ", strings.ToUpper(line[indexes[4]:indexes[5]]), line[indexes[5]:])
 		}
-
-		//  Add colon after parameter name and capitalise the first letter of the parameter detail in doxygen comment blocks
+		//  --- Add colon after parameter name and capitalise the first letter of the parameter detail in doxygen comment blocks
 		if indexes = re_dox_colon.FindStringSubmatchIndex(line); indexes != nil {
 			line = fmt.Sprint(line[:indexes[3]], ": ", strings.ToUpper(line[indexes[4]:indexes[4]+1]), line[indexes[4]+1:])
 		}
-
 		// If the line used in the loop is modified we replace it in the slice
 		if line != lines[i] {
 			lines[i] = line
@@ -98,21 +91,19 @@ func format(lines []string) {
 	}
 }
 
-func getFileList(target *string, ignore *string) []string {
-	var ext string
-	var walkFunc filepath.WalkFunc
-	var files []string
+func getFileList(target *string, ignore_list []string) []string {
+	var (
+		ext      string
+		walkFunc filepath.WalkFunc
+		files    []string
+	)
 
-	if *ignore != "" {
-
-		ignore_list := readFileToSlice(*ignore)
-
+	if ignore_list != nil {
 		walkFunc = func(path string, f os.FileInfo, err error) error {
 			for _, line := range ignore_list {
 				if line = strings.Trim(line, " \t\n\r"); line == "" {
 					continue
 				}
-
 				if matched, _ := regexp.MatchString(line, path); matched {
 					return nil
 				}
@@ -122,7 +113,6 @@ func getFileList(target *string, ignore *string) []string {
 			}
 			return nil
 		}
-
 	} else {
 		walkFunc = func(path string, f os.FileInfo, err error) error {
 			if ext = filepath.Ext(path); ext == ".cpp" || ext == ".h" {
@@ -150,7 +140,6 @@ func readFileToSlice(filename string) []string {
 }
 
 func main() {
-
 	flag.Usage = func() {
 		var sep string
 		if runtime.GOOS == "windows" {
@@ -167,7 +156,7 @@ func main() {
 
 	form := flag.Bool("f", false, "Format code")
 	indent := flag.Bool("ic", false, "Indent \"connect\" statements")
-	ignore := flag.String("ignore", "", "Path to a file with a list of patterns to ignore (One by line), used only if target is a directory")
+	ignore := flag.String("ignore", "", "Path to a file with a list of patterns to ignore (one by line), used only if target is a directory")
 	// git := flag.Bool("git", false, "Use the program as a git hook")
 	flag.Parse()
 
@@ -178,14 +167,18 @@ func main() {
 	}
 
 	target := flag.Arg(0)
-	var files []string
 	fi, err := os.Stat(target)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
+	var files, ignore_list []string
+	if *ignore != "" {
+		ignore_list = readFileToSlice(*ignore)
+	}
+
 	if fi.Mode().IsDir() { // If the target is a folder
-		files = getFileList(&target, ignore)
+		files = getFileList(&target, ignore_list)
 		if len(files) == 0 {
 			fmt.Println("\nThe target folder must contains c++ files")
 		}
@@ -197,16 +190,13 @@ func main() {
 	}
 
 	for _, file := range files {
-
 		lines := readFileToSlice(file)
-
 		if *indent {
 			indentConnects(lines)
 		}
 		if *form {
 			format(lines)
 		}
-
 		ioutil.WriteFile(file, []byte(strings.Join(lines, "\n")), os.ModeAppend|os.ModeExclusive)
 	}
 }
