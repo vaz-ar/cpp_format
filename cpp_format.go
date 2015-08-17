@@ -53,7 +53,7 @@ func indentConnects(lines []string) {
 					pad += mod
 				}
 
-				format_connect = "%-" + pad + "s%s"
+				format_connect = fmt.Sprint("%-", pad, "s%s")
 				lines[i-1] = fmt.Sprintf(format_connect, prev_line[ix_start[2]:ix_start[3]], prev_line[ix_start[4]:ix_start[5]])
 				lines[i] = fmt.Sprintf(format_connect, line[ix_end[2]:ix_end[3]], line[ix_end[4]:ix_end[5]])
 			}
