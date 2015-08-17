@@ -53,7 +53,7 @@ func indentConnects(lines []string) {
 					pad += mod
 				}
 
-				format_connect = fmt.Sprint("%-", pad, "s%s")
+				format_connect = "%-" + pad + "s%s"
 				lines[i-1] = fmt.Sprintf(format_connect, prev_line[ix_start[2]:ix_start[3]], prev_line[ix_start[4]:ix_start[5]])
 				lines[i] = fmt.Sprintf(format_connect, line[ix_end[2]:ix_end[3]], line[ix_end[4]:ix_end[5]])
 			}
@@ -69,20 +69,20 @@ func format(lines []string) {
 		if indexes = re_comment_caps.FindStringSubmatchIndex(line); indexes != nil && indexes[2] == -1 {
 			// => the first capture group didn't return anything, which is what we want (nb: No negative lookahead for regexp in Go)
 			// Capitalisation of the first letter
-			line = fmt.Sprint(line[:indexes[4]], strings.ToUpper(line[indexes[4]:indexes[5]]), line[indexes[5]:])
+			line = line[:indexes[4]] + strings.ToUpper(line[indexes[4]:indexes[5]]) + line[indexes[5]:]
 		}
 		// --- Replace "@" by "\" in doxygen comment blocks
 		if indexes = re_dox_backslash.FindStringSubmatchIndex(line); indexes != nil {
-			line = fmt.Sprint(line[:indexes[3]], "\\", line[indexes[4]:])
+			line = line[:indexes[3]] + "\\" + line[indexes[4]:]
 		}
 		//  --- Capitalisation of first letter after brief/return in doxygen comment blocks
 		if indexes = re_dox_caps.FindStringSubmatchIndex(line); indexes != nil && indexes[6] == -1 {
 			// the third capture group didn't return anything, which is what we want (nb: No negative lookahead for regexp in Go)
-			line = fmt.Sprint(line[:indexes[3]], " ", strings.ToUpper(line[indexes[4]:indexes[5]]), line[indexes[5]:])
+			line = line[:indexes[3]] + " " + strings.ToUpper(line[indexes[4]:indexes[5]]) + line[indexes[5]:]
 		}
 		//  --- Add colon after parameter name and capitalise the first letter of the parameter detail in doxygen comment blocks
 		if indexes = re_dox_colon.FindStringSubmatchIndex(line); indexes != nil {
-			line = fmt.Sprint(line[:indexes[3]], ": ", strings.ToUpper(line[indexes[4]:indexes[4]+1]), line[indexes[4]+1:])
+			line = line[:indexes[3]] + ": " + strings.ToUpper(line[indexes[4]:indexes[4]+1]) + line[indexes[4]+1:]
 		}
 		// If the line used in the loop is modified we replace it in the slice
 		if line != lines[i] {
